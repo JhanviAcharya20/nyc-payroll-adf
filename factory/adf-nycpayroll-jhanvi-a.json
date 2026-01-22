@@ -1,0 +1,9 @@
+{
+	"name": "adf-nycpayroll-jhanvi-a",
+	"location": "westus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "f259e6af-4816-4392-a6c5-b0d1ea3de99c",
+		"tenantId": "f958e84a-92b8-439f-a62d-4f45996b6d07"
+	}
+}

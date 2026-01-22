@@ -1,0 +1,169 @@
+{
+	"name": "Summary",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DS_SQL_Payroll_2020",
+						"type": "DatasetReference"
+					},
+					"name": "SRCPayroll2020"
+				},
+				{
+					"dataset": {
+						"referenceName": "DS_SQL_Payroll_2021",
+						"type": "DatasetReference"
+					},
+					"name": "SRCPayroll2021"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SYN_NYC_Payroll_Summary",
+						"type": "DatasetReference"
+					},
+					"name": "SNKSQLSummary"
+				},
+				{
+					"dataset": {
+						"referenceName": "SYN_NYC_Payroll_Summary",
+						"type": "DatasetReference"
+					},
+					"name": "SNKADLSStaging"
+				}
+			],
+			"transformations": [
+				{
+					"name": "SELPayroll2020"
+				},
+				{
+					"name": "select1"
+				},
+				{
+					"name": "UNPayrollAll"
+				},
+				{
+					"name": "FLTFiscalYear"
+				},
+				{
+					"name": "DRVTotalPaid"
+				},
+				{
+					"name": "AGGSummary"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     dataflow_param_fiscalyear as integer (2021)",
+				"}",
+				"source(output(",
+				"          FiscalYear as integer,",
+				"          PayrollNumber as integer,",
+				"          AgencyID as string,",
+				"          AgencyName as string,",
+				"          EmployeeID as string,",
+				"          LastName as string,",
+				"          FirstName as string,",
+				"          AgencyStartDate as date,",
+				"          WorkLocationBorough as string,",
+				"          TitleCode as string,",
+				"          TitleDescription as string,",
+				"          LeaveStatusasofJune30 as string,",
+				"          BaseSalary as double,",
+				"          PayBasis as string,",
+				"          RegularHours as double,",
+				"          RegularGrossPaid as double,",
+				"          OTHours as double,",
+				"          TotalOTPaid as double,",
+				"          TotalOtherPay as double",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> SRCPayroll2020",
+				"source(output(",
+				"          FiscalYear as integer,",
+				"          PayrollNumber as integer,",
+				"          AgencyCode as string,",
+				"          AgencyName as string,",
+				"          EmployeeID as string,",
+				"          LastName as string,",
+				"          FirstName as string,",
+				"          AgencyStartDate as date,",
+				"          WorkLocationBorough as string,",
+				"          TitleCode as string,",
+				"          TitleDescription as string,",
+				"          LeaveStatusasofJune30 as string,",
+				"          BaseSalary as double,",
+				"          PayBasis as string,",
+				"          RegularHours as double,",
+				"          RegularGrossPaid as double,",
+				"          OTHours as double,",
+				"          TotalOTPaid as double,",
+				"          TotalOtherPay as double",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> SRCPayroll2021",
+				"SRCPayroll2020 select(mapColumn(",
+				"          FiscalYear,",
+				"          AgencyID,",
+				"          RegularGrossPaid,",
+				"          TotalOTPaid,",
+				"          TotalOtherPay",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> SELPayroll2020",
+				"SRCPayroll2021 select(mapColumn(",
+				"          FiscalYear,",
+				"          AgencyName,",
+				"          RegularGrossPaid,",
+				"          TotalOTPaid,",
+				"          TotalOtherPay",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"SELPayroll2020, select1 union(byName: true)~> UNPayrollAll",
+				"UNPayrollAll filter(toInteger(FiscalYear) >= $dataflow_param_fiscalyear) ~> FLTFiscalYear",
+				"FLTFiscalYear derive(TotalPaid = RegularGrossPaid + TotalOTPaid + TotalOtherPay) ~> DRVTotalPaid",
+				"DRVTotalPaid aggregate(groupBy(AgencyName,",
+				"          FiscalYear),",
+				"     TotalPaid = sum(TotalPaid)) ~> AGGSummary",
+				"AGGSummary sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     truncate:true,",
+				"     format: 'table',",
+				"     staged: true,",
+				"     allowCopyCommand: true,",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          AgencyName,",
+				"          FiscalYear,",
+				"          TotalPaid",
+				"     )) ~> SNKSQLSummary",
+				"AGGSummary sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     staged: true,",
+				"     allowCopyCommand: true,",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> SNKADLSStaging"
+			]
+		}
+	}
+}
